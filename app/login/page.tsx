@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Card,
   CardContent,
@@ -16,17 +18,21 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
+  const { signIn } = useAuth();
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  const [successMessage, setSuccessMessage] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const isValidEmail = (val: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
   };
 
-  // Realtime validation: an error disappears once its field is valid
+  // Realtime client-side validation cleanup
   const handleEmailChange = (val: string) => {
     setEmail(val);
     if (errors.email) {
@@ -45,9 +51,9 @@ export default function LoginPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSuccessMessage("");
+    setAuthError("");
     const newErrors: { email?: string; password?: string } = {};
 
     // Validate email
@@ -64,8 +70,25 @@ export default function LoginPage() {
 
     setErrors(newErrors);
 
+    // Call real Supabase Auth when client validation passes
     if (Object.keys(newErrors).length === 0) {
-      setSuccessMessage("Login successful (demo)");
+      setLoading(true);
+      try {
+        const { error } = await signIn(email, password);
+        if (error) {
+          setAuthError(error.message);
+        } else {
+          router.push("/");
+        }
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setAuthError(err.message);
+        } else {
+          setAuthError("Failed to log in");
+        }
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -82,12 +105,12 @@ export default function LoginPage() {
           </CardHeader>
           <form onSubmit={handleSubmit} noValidate data-testid="login-form">
             <CardContent className="space-y-4">
-              {successMessage && (
+              {authError && (
                 <div
-                  data-testid="form-success"
-                  className="p-3 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg"
+                  data-testid="error-auth"
+                  className="p-3 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg"
                 >
-                  {successMessage}
+                  {authError}
                 </div>
               )}
 
@@ -130,8 +153,8 @@ export default function LoginPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-3 pt-2">
-              <Button type="submit" data-testid="login-submit" className="w-full">
-                Sign In
+              <Button type="submit" data-testid="login-submit" className="w-full" disabled={loading}>
+                {loading ? "Signing in..." : "Sign In"}
               </Button>
               <p className="text-xs text-center text-slate-500">
                 Don&apos;t have an account?{" "}

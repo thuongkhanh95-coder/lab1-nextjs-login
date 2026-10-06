@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Header } from "@/components/Header";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Card,
   CardContent,
@@ -23,19 +24,23 @@ interface FormErrors {
 }
 
 export default function RegisterPage() {
+  const { signUp } = useAuth();
+
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [errors, setErrors] = useState<FormErrors>({});
+  const [authError, setAuthError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const isValidEmail = (val: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
   };
 
-  // Realtime validation: an error disappears once its field is valid
+  // Realtime client-side validation cleanup
   const handleFullNameChange = (val: string) => {
     setFullName(val);
     if (errors.fullName && val.trim().length > 0) {
@@ -57,7 +62,6 @@ export default function RegisterPage() {
     if (errors.password && val.length >= 6) {
       setErrors((prev) => ({ ...prev, password: undefined }));
     }
-    // Also clear confirm password error if matching
     if (errors.confirmPassword && confirmPassword && val === confirmPassword) {
       setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
     }
@@ -70,9 +74,10 @@ export default function RegisterPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSuccessMessage("");
+    setAuthError("");
     const newErrors: FormErrors = {};
 
     // 1. Full name: empty or spaces only -> "Full name is required"
@@ -103,8 +108,25 @@ export default function RegisterPage() {
 
     setErrors(newErrors);
 
+    // Call real Supabase Auth when client validation passes
     if (Object.keys(newErrors).length === 0) {
-      setSuccessMessage("Registration successful (demo)");
+      setLoading(true);
+      try {
+        const { error } = await signUp(email, password);
+        if (error) {
+          setAuthError(error.message);
+        } else {
+          setSuccessMessage("Registration successful");
+        }
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setAuthError(err.message);
+        } else {
+          setAuthError("Registration failed");
+        }
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -121,6 +143,15 @@ export default function RegisterPage() {
           </CardHeader>
           <form onSubmit={handleSubmit} noValidate data-testid="register-form">
             <CardContent className="space-y-4">
+              {authError && (
+                <div
+                  data-testid="error-auth"
+                  className="p-3 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg"
+                >
+                  {authError}
+                </div>
+              )}
+
               {successMessage && (
                 <div
                   data-testid="form-success"
@@ -207,8 +238,8 @@ export default function RegisterPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-3 pt-2">
-              <Button type="submit" data-testid="register-submit" className="w-full">
-                Register
+              <Button type="submit" data-testid="register-submit" className="w-full" disabled={loading}>
+                {loading ? "Registering..." : "Register"}
               </Button>
               <p className="text-xs text-center text-slate-500">
                 Already have an account?{" "}
