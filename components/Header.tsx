@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useFavorites } from "@/contexts/FavoritesContext";
 
 export function Header() {
   const { user, signOut } = useAuth();
+  const { favorites } = useFavorites();
 
   return (
     <header className="border-b bg-white sticky top-0 z-50 shadow-sm w-full">
@@ -18,12 +20,21 @@ export function Header() {
             SE20B Store
           </Link>
           {user && (
-            <Link
-              href="/account"
-              className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
-            >
-              Account
-            </Link>
+            <>
+              <Link
+                href="/favorites"
+                data-testid="link-favorites"
+                className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+              >
+                Favorites (<span data-testid="favorites-count">{favorites.length}</span>)
+              </Link>
+              <Link
+                href="/account"
+                className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+              >
+                Account
+              </Link>
+            </>
           )}
         </div>
         <nav className="flex items-center gap-3">
