@@ -4,6 +4,9 @@ import { notFound } from "next/navigation";
 import { products } from "@/data/products";
 import { Header } from "@/components/Header";
 import { FavoriteButton } from "@/components/FavoriteButton";
+import { ReviewsProvider } from "@/contexts/ReviewsContext";
+import { ReviewsSection } from "@/components/ReviewsSection";
+import { getReviewsData } from "@/lib/reviews";
 
 interface ProductDetailPageProps {
   params: Promise<{ id: string }>;
@@ -48,6 +51,9 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   if (!product) {
     notFound();
   }
+
+  // Fetched on the server (anon key) and handed to the client part as props.
+  const { reviews: initialReviews } = await getReviewsData(product.id);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col w-full overflow-x-hidden">
@@ -122,6 +128,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             </div>
           </div>
         </div>
+
+        <ReviewsProvider productId={product.id} initialReviews={initialReviews}>
+          <ReviewsSection productId={product.id} />
+        </ReviewsProvider>
       </main>
       <footer className="border-t bg-white py-6 text-center text-xs text-slate-500 w-full">
         © 2026 SE20B.NJS Store - Product Detail
